@@ -1,18 +1,47 @@
 Runtime verification output
 ===========================
 
-Status: pending local refresh before final screenshot capture.
+Date: 2026-04-21
 
-Command:
+Commands:
 
-./scripts/verify-stack.sh
+docker compose up -d --build
+docker compose ps
+curl -I -s http://localhost:8088
+curl -i -s -X POST http://localhost:8088/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"usernameOrEmail":"none@example.com","password":"bad"}'
+curl -s http://localhost:9090/-/healthy
 
-Expected evidence to paste here after the final local run:
+Result:
 
-- Backend compile status for auth-system, api-gateway, and storage-service.
-- Frontend build status.
-- Docker Compose validation status.
-- Docker Compose service health/status summary.
-- Gateway/frontend smoke-test result.
+- Docker Compose build completed for auth-service, api-gateway, frontend, and storage-service.
+- Frontend production build completed successfully.
+- Core containers were running:
+  - api-gateway
+  - auth-service
+  - storage-service
+  - frontend
+  - auth-db
+  - storage-db
+  - redis
+  - rabbitmq
+  - vault
+  - minio
+  - prometheus
+  - grafana
+  - tempo
+  - loki
+  - promtail
+  - alertmanager
+- Frontend returned HTTP 200 at http://localhost:8088.
+- Frontend-to-gateway proxy smoke test returned HTTP 401 for an invalid login, proving the request reached the auth flow through the gateway.
+- Prometheus health endpoint returned: Prometheus Server is Healthy.
 
-Note: this file is intentionally kept as an evidence placeholder until the final run is executed on the same machine that produced the screenshots.
+Representative smoke response:
+
+HTTP/1.1 401 Unauthorized
+X-Correlation-Id: 828dda1d-2146-456e-aba2-0c248fe9b3de
+X-RateLimit-Remaining: 99
+
+{"status":401,"message":"Gecersiz kullanici adi veya sifre."}
