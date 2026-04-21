@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <appender name="jsonConsole" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp><timeZone>UTC</timeZone></timestamp>
+                <version/>
+                <logLevel/>
+                <loggerName/>
+                <threadName/>
+                <mdc/>
+                <pattern>
+                    <pattern>
+                        {
+                        "service":"auth-service",
+                        "action":"%mdc{action:-SYSTEM_EVENT}",
+                        "traceId":"%mdc{traceId:-}",
+                        "spanId":"%mdc{spanId:-}",
+                        "correlationId":"%mdc{correlationId:-}",
+                        "method":"%mdc{method:-}",
+                        "path":"%mdc{path:-}",
+                        "status":"%mdc{status:-}",
+                        "durationMs":"%mdc{durationMs:-}"
+                        }
+                    </pattern>
+                </pattern>
+                <message/>
+                <stackTrace/>
+                <arguments/>
+            </providers>
+        </encoder>
+    </appender>
+
+    <appender name="jsonFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/auth-service.json</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/archived/auth-service.%d{yyyy-MM-dd}.%i.json.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp><timeZone>UTC</timeZone></timestamp>
+                <logLevel/>
+                <mdc/>
+                <pattern>
+                    <pattern>
+                        {
+                        "service":"auth-service",
+                        "action":"%mdc{action:-SYSTEM_EVENT}",
+                        "traceId":"%mdc{traceId:-}",
+                        "spanId":"%mdc{spanId:-}",
+                        "correlationId":"%mdc{correlationId:-}",
+                        "method":"%mdc{method:-}",
+                        "path":"%mdc{path:-}",
+                        "status":"%mdc{status:-}",
+                        "durationMs":"%mdc{durationMs:-}"
+                        }
+                    </pattern>
+                </pattern>
+                <message/>
+                <stackTrace/>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="jsonConsole"/>
+        <appender-ref ref="jsonFile"/>
+    </root>
+</configuration>

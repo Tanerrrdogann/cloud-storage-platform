@@ -1,0 +1,400 @@
+services:
+  auth-db:
+    image: postgres:15-alpine
+    container_name: auth-db
+    restart: always
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-123456}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d authdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  storage-db:
+    image: postgres:15-alpine
+    container_name: storage-db
+    restart: always
+    environment:
+      POSTGRES_DB: storagedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${STORAGE_DB_PASSWORD:-postgres}
+    ports:
+      - "5434:5432"
+    volumes:
+      - storage_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d storagedb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  auth-service:
+    build: .
+    container_name: auth-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      vault-seed:
+        condition: service_completed_successfully
+      tempo:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/authdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_CLOUD_VAULT_URI: http://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN}
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-guest}
+
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "false"
+
+      SERVER_SERVLET_CONTEXT_PATH: /api/v1
+
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+
+      JWT_EXPIRATION: 86400000
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
+
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+
+  api-gateway:
+    build: ../api-gateway
+    container_name: api-gateway
+    ports:
+      - "8443:8443"
+    depends_on:
+      auth-service:
+        condition: service_started
+      storage-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      vault-seed:
+        condition: service_completed_successfully
+      tempo:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SPRING_CLOUD_VAULT_URI: http://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN}
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      SERVICES_AUTH_URL: https://auth-service:8080
+      STORAGE_SERVICE_URL: http://storage-service:8082
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
+
+  frontend:
+    build: ../frontend
+    container_name: platform-frontend
+    restart: always
+    depends_on:
+      api-gateway:
+        condition: service_started
+    ports:
+      - "8088:80"
+
+  storage-service:
+    build: ../storage-service
+    container_name: storage-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      storage-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      vault-seed:
+        condition: service_completed_successfully
+      tempo:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://storage-db:5432/storagedb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${STORAGE_DB_PASSWORD:-postgres}
+      SPRING_CLOUD_VAULT_URI: http://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN}
+
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_JPA_SHOW_SQL: "false"
+
+      SERVER_SERVLET_CONTEXT_PATH: /api/v1
+
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-guest}
+
+      STORAGE_LOCAL_ROOT: /data/storage
+      STORAGE_ENCRYPTION_KEY: ${STORAGE_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+      STORAGE_REPLICATION_ENABLED: "true"
+      STORAGE_REPLICATION_S3_ENDPOINT: http://minio:9000
+      STORAGE_REPLICATION_S3_BUCKET: storage-replica
+      STORAGE_REPLICATION_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      STORAGE_REPLICATION_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
+    volumes:
+      - storage_data:/data/storage
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"   
+      - "15672:15672" 
+    expose:
+      - "15692"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-guest}
+    volumes:
+      - ../observability/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  vault:
+    image: hashicorp/vault:1.18
+    container_name: platform-vault
+    restart: always
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-dev-root-token-change-me}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    command: server -dev
+    healthcheck:
+      test: ["CMD-SHELL", "VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=$${VAULT_DEV_ROOT_TOKEN_ID} vault status >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  vault-seed:
+    image: hashicorp/vault:1.18
+    container_name: platform-vault-seed
+    depends_on:
+      vault:
+        condition: service_healthy
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: ${VAULT_TOKEN:-dev-root-token-change-me}
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - |
+        vault kv put secret/auth-service \
+          db.password="123456" \
+          jwt.secret="bu-anahtar-en-az-otuz-iki-karakter-uzunlugunda-olmalidir-12345" \
+          mail.username="${MAIL_USERNAME:-demo@example.com}" \
+          mail.password="${MAIL_PASSWORD:-dev-mail-password-change-me}" \
+          rabbitmq.host="localhost" \
+          rabbitmq.port="5672" \
+          rabbitmq.username="guest" \
+          rabbitmq.password="guest" \
+          auth.server.ssl.key-store-password="changeit" \
+          auth.server.ssl.trust-store-password="changeit"
+
+        vault kv put secret/api-gateway \
+          gateway.server.ssl.key-store-password="changeit" \
+          gateway.client.ssl.key-store-password="changeit" \
+          jwt.secret="bu-anahtar-en-az-otuz-iki-karakter-uzunlugunda-olmalidir-12345"
+
+        vault kv put secret/storage-service \
+          storage.db.password="postgres" \
+          storage.encryption.key="0123456789abcdef0123456789abcdef" \
+          storage.local.root="./storage-data" \
+          storage.replication.enabled="true" \
+          storage.replication.s3.endpoint="http://localhost:9000" \
+          storage.replication.s3.bucket="storage-replica" \
+          storage.replication.s3.access-key="minioadmin" \
+          storage.replication.s3.secret-key="minioadmin"
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    restart: always
+    depends_on:
+      auth-service:
+        condition: service_started
+      api-gateway:
+        condition: service_started
+      storage-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      alertmanager:
+        condition: service_started
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    restart: always
+    depends_on:
+      prometheus:
+        condition: service_started
+      tempo:
+        condition: service_started
+      loki:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: tempo
+    restart: always
+    command:
+      - -config.file=/etc/tempo/tempo.yml
+    ports:
+      - "3200:3200"
+    expose:
+      - "4317"
+      - "4318"
+    volumes:
+      - ../observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/var/tempo
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    restart: always
+    command:
+      - -config.file=/etc/loki/loki.yml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ../observability/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: promtail
+    restart: always
+    depends_on:
+      loki:
+        condition: service_started
+    command:
+      - -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ../observability/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    restart: always
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ../observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+
+  alert-webhook:
+    image: mendhak/http-https-echo:31
+    container_name: alert-webhook
+    restart: always
+    environment:
+      HTTP_PORT: 8080
+    expose:
+      - "8080"
+
+volumes:
+  postgres_data:
+  storage_postgres_data:
+  storage_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+  tempo_data:
+  loki_data:
+  alertmanager_data:

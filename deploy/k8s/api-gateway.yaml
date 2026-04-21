@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: cloud-storage-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: cloud-storage-platform/api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8443
+            - containerPort: 9002
+          envFrom:
+            - configMapRef:
+                name: platform-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: cloud-storage-platform
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - name: https
+      port: 8443
+      targetPort: 8443
+    - name: management
+      port: 9002
+      targetPort: 9002
+

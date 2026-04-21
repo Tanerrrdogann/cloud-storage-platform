@@ -1,0 +1,18 @@
+Runtime verification output
+===========================
+
+Status: pending local refresh before final screenshot capture.
+
+Command:
+
+./scripts/verify-stack.sh
+
+Expected evidence to paste here after the final local run:
+
+- Backend compile status for auth-system, api-gateway, and storage-service.
+- Frontend build status.
+- Docker Compose validation status.
+- Docker Compose service health/status summary.
+- Gateway/frontend smoke-test result.
+
+Note: this file is intentionally kept as an evidence placeholder until the final run is executed on the same machine that produced the screenshots.

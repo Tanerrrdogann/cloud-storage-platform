@@ -1,0 +1,113 @@
+groups:
+  - name: platform-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"auth-service|api-gateway|storage-service|rabbitmq"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is down"
+          description: "Prometheus cannot scrape {{ $labels.job }} for more than 1 minute."
+
+      - alert: RabbitMqDown
+        expr: up{job="rabbitmq"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "RabbitMQ broker is down"
+          description: "RabbitMQ Prometheus endpoint is not reachable."
+
+      - alert: ApplicationReadinessDown
+        expr: application_ready_time_seconds{job=~"auth-service|api-gateway|storage-service"} <= 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} readiness is not available"
+          description: "The application has not reported a ready state. DB, Redis, RabbitMQ, or startup dependencies may be unhealthy."
+
+      - alert: HighApiP95Latency
+        expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~"auth-service|api-gateway|storage-service"}[5m])) by (le, job)) > 0.2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 API latency on {{ $labels.job }}"
+          description: "p95 latency is above 200ms."
+
+      - alert: HighApiErrorRate
+        expr: sum(rate(http_server_requests_seconds_count{job=~"auth-service|api-gateway|storage-service",status=~"5.."}[5m])) by (job) / sum(rate(http_server_requests_seconds_count{job=~"auth-service|api-gateway|storage-service"}[5m])) by (job) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx error rate on {{ $labels.job }}"
+          description: "5xx error rate is above 5%."
+
+      - alert: RabbitMqDlqHasMessages
+        expr: sum(rabbitmq_queue_messages_ready{queue=~".*dlq.*|.*DLQ.*"}) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RabbitMQ DLQ has messages"
+          description: "One or more dead-letter queues contain messages."
+
+      - alert: RabbitMqQueueBacklog
+        expr: sum(rabbitmq_queue_messages_ready{queue!~".*dlq.*|.*DLQ.*"}) by (queue) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RabbitMQ queue backlog on {{ $labels.queue }}"
+          description: "A non-DLQ RabbitMQ queue has more than 100 ready messages."
+
+      - alert: StorageReplicationFailures
+        expr: increase(storage_replication_total{status="failure"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Storage replication failure detected"
+          description: "storage-service reported replication failures in the last 5 minutes."
+
+      - alert: HighJvmMemoryUsage
+        expr: sum(jvm_memory_used_bytes{area="heap"}) by (job) / sum(jvm_memory_max_bytes{area="heap"}) by (job) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High JVM heap usage on {{ $labels.job }}"
+          description: "Heap usage is above 85%."
+
+      - alert: AuthServiceDependencyReadinessProblem
+        expr: application_ready_time_seconds{job="auth-service"} <= 0 or up{job="auth-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          dependency_scope: postgres-redis-rabbitmq
+        annotations:
+          summary: "auth-service readiness problem"
+          description: "auth-service is not ready. This can indicate PostgreSQL, Redis, RabbitMQ, Vault, or application startup dependency failure."
+
+      - alert: GatewayDependencyReadinessProblem
+        expr: application_ready_time_seconds{job="api-gateway"} <= 0 or up{job="api-gateway"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          dependency_scope: redis-auth-storage
+        annotations:
+          summary: "api-gateway readiness problem"
+          description: "api-gateway is not ready. This can indicate Redis, auth-service, storage-service, Vault, or gateway startup dependency failure."
+
+      - alert: StorageServiceDependencyReadinessProblem
+        expr: application_ready_time_seconds{job="storage-service"} <= 0 or up{job="storage-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          dependency_scope: postgres-rabbitmq-minio
+        annotations:
+          summary: "storage-service readiness problem"
+          description: "storage-service is not ready. This can indicate PostgreSQL, RabbitMQ, MinIO, Vault, or application startup dependency failure."

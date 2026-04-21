@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage-service
+  namespace: cloud-storage-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storage-service
+  template:
+    metadata:
+      labels:
+        app: storage-service
+    spec:
+      containers:
+        - name: storage-service
+          image: cloud-storage-platform/storage-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+            - containerPort: 9003
+          envFrom:
+            - configMapRef:
+                name: platform-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-service
+  namespace: cloud-storage-platform
+spec:
+  selector:
+    app: storage-service
+  ports:
+    - name: http
+      port: 8082
+      targetPort: 8082
+    - name: management
+      port: 9003
+      targetPort: 9003
+

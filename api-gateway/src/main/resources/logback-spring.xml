@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <appender name="jsonConsole" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <version/>
+                <logLevel/>
+                <loggerName/>
+                <threadName/>
+                <mdc/>
+                <pattern>
+                    <pattern>
+                        {
+                        "service":"api-gateway",
+                        "action":"%mdc{action:-SYSTEM_EVENT}",
+                        "traceId":"%mdc{traceId:-}",
+                        "spanId":"%mdc{spanId:-}",
+                        "correlationId":"%mdc{correlationId:-}",
+                        "method":"%mdc{method:-}",
+                        "path":"%mdc{path:-}",
+                        "status":"%mdc{status:-}",
+                        "durationMs":"%mdc{durationMs:-}"
+                        }
+                    </pattern>
+                </pattern>
+                <message/>
+                <stackTrace/>
+                <arguments/>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="jsonConsole"/>
+    </root>
+</configuration>

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-config
+  namespace: cloud-storage-platform
+data:
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  SERVICES_AUTH_URL: "https://auth-service:8080"
+  STORAGE_SERVICE_URL: "http://storage-service:8082"
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://tempo:4318/v1/traces"
+
