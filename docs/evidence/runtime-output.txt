@@ -1,47 +1,119 @@
 Runtime verification output
 ===========================
 
-Date: 2026-04-21
+Date: 2026-04-22 15:25:24 +03
+Command:
 
-Commands:
+./scripts/verify-stack.sh
 
-docker compose up -d --build
-docker compose ps
-curl -I -s http://localhost:8088
-curl -i -s -X POST http://localhost:8088/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"usernameOrEmail":"none@example.com","password":"bad"}'
-curl -s http://localhost:9090/-/healthy
+Exit code: 0
 
-Result:
+Output:
 
-- Docker Compose build completed for auth-service, api-gateway, frontend, and storage-service.
-- Frontend production build completed successfully.
-- Core containers were running:
-  - api-gateway
-  - auth-service
-  - storage-service
-  - frontend
-  - auth-db
-  - storage-db
-  - redis
-  - rabbitmq
-  - vault
-  - minio
-  - prometheus
-  - grafana
-  - tempo
-  - loki
-  - promtail
-  - alertmanager
-- Frontend returned HTTP 200 at http://localhost:8088.
-- Frontend-to-gateway proxy smoke test returned HTTP 401 for an invalid login, proving the request reached the auth flow through the gateway.
-- Prometheus health endpoint returned: Prometheus Server is Healthy.
+[verify] Compiling auth-system
 
-Representative smoke response:
+[verify] Compiling api-gateway
 
-HTTP/1.1 401 Unauthorized
-X-Correlation-Id: 828dda1d-2146-456e-aba2-0c248fe9b3de
-X-RateLimit-Remaining: 99
+[verify] Compiling storage-service
 
-{"status":401,"message":"Gecersiz kullanici adi veya sifre."}
+[verify] Building frontend
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated stable@0.1.8: Modern JS already guarantees Array#sort() is a stable sort, so this library is deprecated. See the compatibility table on MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#browser_compatibility
+npm warn deprecated @babel/plugin-proposal-private-methods@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-methods instead.
+npm warn deprecated @babel/plugin-proposal-nullish-coalescing-operator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-nullish-coalescing-operator instead.
+npm warn deprecated @babel/plugin-proposal-numeric-separator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-numeric-separator instead.
+npm warn deprecated @babel/plugin-proposal-class-properties@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
+npm warn deprecated rollup-plugin-terser@7.0.2: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-terser
+npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated abab@2.0.6: Use your platform's native atob() and btoa() methods instead
+npm warn deprecated @babel/plugin-proposal-optional-chaining@7.21.0: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-chaining instead.
+npm warn deprecated @babel/plugin-proposal-private-property-in-object@7.21.11: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-property-in-object instead.
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated whatwg-encoding@1.0.5: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated q@1.5.1: You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now.
+npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm warn deprecated domexception@2.0.1: Use your platform's native DOMException instead
+npm warn deprecated w3c-hr-time@1.0.2: Use your platform's native performance.now() and performance.timeOrigin.
+npm warn deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-codec instead
+npm warn deprecated workbox-cacheable-response@6.6.0: workbox-background-sync@6.6.0
+npm warn deprecated workbox-google-analytics@6.6.0: It is not compatible with newer versions of GA starting with v4, as long as you are using GAv3 it should be ok, but the package is not longer being maintained
+npm warn deprecated source-map@0.8.0-beta.0: The work that was done in this beta branch won't be included in future versions
+npm warn deprecated svgo@1.3.2: This SVGO version is no longer supported. Upgrade to v2.x.x.
+npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+added 1319 packages, and audited 1320 packages in 55s
+
+268 packages are looking for funding
+  run `npm fund` for details
+
+31 vulnerabilities (9 low, 6 moderate, 16 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> auth-frontend@0.1.0 build
+> react-scripts build
+
+(node:189982) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Creating an optimized production build...
+Compiled successfully.
+
+File sizes after gzip:
+
+  103.12 kB  build/static/js/main.ceb5aadf.js
+  3.41 kB    build/static/css/main.8fc2fe6a.css
+  1.77 kB    build/static/js/453.149767ca.chunk.js
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+
+[verify] Validating Docker Compose
+
+[verify] Checking Docker Compose service status
+NAME                IMAGE                                      COMMAND                  SERVICE           CREATED          STATUS                       PORTS
+alert-webhook       mendhak/http-https-echo:31                 "docker-entrypoint.s..."   alert-webhook     45 hours ago     Up About an hour             8080/tcp, 8443/tcp
+alertmanager        prom/alertmanager:v0.27.0                  "/bin/alertmanager -..."   alertmanager      45 hours ago     Up About an hour             0.0.0.0:9093->9093/tcp, [::]:9093->9093/tcp
+api-gateway         auth-system-api-gateway                    "java -jar app.jar"      api-gateway       59 minutes ago   Up 58 minutes                0.0.0.0:8443->8443/tcp, [::]:8443->8443/tcp
+auth-db             postgres:15-alpine                         "docker-entrypoint.s..."   auth-db           21 hours ago     Up About an hour (healthy)   0.0.0.0:5433->5432/tcp, [::]:5433->5432/tcp
+auth-service        auth-system-auth-service                   "java -jar app.jar"      auth-service      59 minutes ago   Up 58 minutes                0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+grafana             grafana/grafana:11.4.0                     "/run.sh"                grafana           45 hours ago     Up About an hour             0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+loki                grafana/loki:3.3.2                         "/usr/bin/loki -conf..."   loki              45 hours ago     Up About an hour             0.0.0.0:3100->3100/tcp, [::]:3100->3100/tcp
+minio               minio/minio:RELEASE.2025-04-22T22-12-26Z   "/usr/bin/docker-ent..."   minio             45 hours ago     Up About an hour (healthy)   0.0.0.0:9000-9001->9000-9001/tcp, [::]:9000-9001->9000-9001/tcp
+platform-frontend   auth-system-frontend                       "/docker-entrypoint...."   frontend          59 minutes ago   Up 58 minutes                0.0.0.0:8088->80/tcp, [::]:8088->80/tcp
+platform-vault      hashicorp/vault:1.18                       "docker-entrypoint.s..."   vault             59 minutes ago   Up 59 minutes (healthy)      8200/tcp
+prometheus          prom/prometheus:v2.55.1                    "/bin/prometheus --c..."   prometheus        45 hours ago     Up About an hour             0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+promtail            grafana/promtail:3.3.2                     "/usr/bin/promtail -..."   promtail          45 hours ago     Up About an hour
+rabbitmq            rabbitmq:3-management                      "docker-entrypoint.s..."   rabbitmq          45 hours ago     Up About an hour (healthy)   4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, [::]:5672->5672/tcp, 15671/tcp, 15691-15692/tcp, 25672/tcp, 0.0.0.0:15672->15672/tcp, [::]:15672->15672/tcp
+redis               redis:7-alpine                             "docker-entrypoint.s..."   redis             45 hours ago     Up About an hour (healthy)   6379/tcp
+storage-db          postgres:15-alpine                         "docker-entrypoint.s..."   storage-db        21 hours ago     Up About an hour (healthy)   0.0.0.0:5434->5432/tcp, [::]:5434->5432/tcp
+storage-service     auth-system-storage-service                "java -jar app.jar"      storage-service   59 minutes ago   Up 58 minutes                0.0.0.0:8082->8082/tcp, [::]:8082->8082/tcp
+tempo               grafana/tempo:2.6.1                        "/tempo -config.file..."   tempo             45 hours ago     Up About an hour             0.0.0.0:3200->3200/tcp, [::]:3200->3200/tcp, 4317-4318/tcp
+
+[verify] Checking frontend endpoint
+
+[verify] Checking frontend proxy to gateway/auth
+
+[verify] Checking Prometheus targets
+
+[verify] Checking Grafana datasources
+
+[verify] Checking RabbitMQ queues
+
+[verify] Stack verification completed
