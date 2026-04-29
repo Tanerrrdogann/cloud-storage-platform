@@ -7,6 +7,11 @@ This project is designed to demonstrate backend/system-design skills: API gatewa
 > This is a portfolio and system-design demonstration project. It is not a managed production SaaS. Local secrets and demo credentials are intentionally simple for repeatable local execution and must be replaced before any real deployment.
 > Development TLS/mTLS certificates are generated locally and are intentionally not committed.
 
+## Projeyi Yapanlar
+
+- Ismail Taner Erdogan
+- Nisa Goksen
+
 ## What This System Does
 
 - Serves a React cloud-drive frontend at `http://localhost:8088`.
