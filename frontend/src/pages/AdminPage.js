@@ -8,6 +8,8 @@ import StatusBadge from '../components/StatusBadge';
 import { adminApi, storageApi } from '../services/api';
 
 const GRAFANA_URL = 'http://localhost:3000/d/cloud-storage-platform-overview/cloud-storage-platform-overview';
+const isDemoMode = process.env.REACT_APP_DEMO_MODE === 'true';
+const basePath = process.env.REACT_APP_PUBLIC_BASE_PATH || '';
 
 function AdminPage() {
     const [users, setUsers] = useState([]);
@@ -51,10 +53,15 @@ function AdminPage() {
 
     const handleLogout = () => {
         localStorage.clear();
-        window.location.href = '/';
+        window.location.href = `${basePath}/`;
     };
 
     const changeRole = async (userId, newRole) => {
+        if (isDemoMode) {
+            alert('Demo admin is read-only. Restarting the demo restores the same sample accounts.');
+            return;
+        }
+
         try {
             await adminApi.changeRole(userId, newRole);
             await fetchDashboard();
@@ -64,6 +71,11 @@ function AdminPage() {
     };
 
     const suspendUser = async (userId, days) => {
+        if (isDemoMode) {
+            alert('Demo admin is read-only. Restarting the demo restores the same sample accounts.');
+            return;
+        }
+
         try {
             await adminApi.suspendUser(userId, days);
             await fetchDashboard();
@@ -73,6 +85,11 @@ function AdminPage() {
     };
 
     const permanentDelete = async (userId) => {
+        if (isDemoMode) {
+            alert('Demo admin is read-only. Restarting the demo restores the same sample accounts.');
+            return;
+        }
+
         if (!window.confirm('Permanently delete this user?')) {
             return;
         }
@@ -96,7 +113,7 @@ function AdminPage() {
         ['async', 'Async Engine'],
         ['replication', 'Replication'],
         ['wal', 'WAL + Saga'],
-        ['observability', 'Observability']
+        ...(!isDemoMode ? [['observability', 'Observability']] : [])
     ];
 
     const userColumns = [
@@ -105,7 +122,7 @@ function AdminPage() {
         { key: 'email', header: 'Email' },
         { key: 'role', header: 'Role', render: (row) => <StatusBadge value={row.role} /> },
         { key: 'enabled', header: 'Status', render: (row) => <StatusBadge value={row.enabled ? 'ACTIVE' : 'PENDING'} /> },
-        { key: 'actions', header: 'Actions', render: (row) => row.role === 'ROLE_ADMIN' ? <span className="muted">Protected</span> : (
+        { key: 'actions', header: 'Actions', render: (row) => isDemoMode ? <span className="muted">Read-only demo</span> : row.role === 'ROLE_ADMIN' ? <span className="muted">Protected</span> : (
             <div className="dashboard-actions" style={{ justifyContent: 'flex-start' }}>
                 <ActionButton variant="warning" onClick={() => changeRole(row.id, 'ROLE_MODERATOR')}>Mod</ActionButton>
                 <ActionButton variant="primary" onClick={() => changeRole(row.id, 'ROLE_USER')}>User</ActionButton>
@@ -167,7 +184,7 @@ function AdminPage() {
             }}
             actions={(
                 <>
-                    <a className="button button-primary" href={GRAFANA_URL} target="_blank" rel="noreferrer">Open Grafana</a>
+                    {!isDemoMode && <a className="button button-primary" href={GRAFANA_URL} target="_blank" rel="noreferrer">Open Grafana</a>}
                     <ActionButton variant="ghost" onClick={fetchDashboard}>Refresh</ActionButton>
                     <ActionButton variant="danger" onClick={handleLogout}>Sign out</ActionButton>
                 </>

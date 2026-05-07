@@ -11,6 +11,8 @@ import { authApi, storageApi } from '../services/api';
 
 const FOLDER_MARKER = '.folder';
 const DRIVE_ENTRY_MIME = 'application/x-cloud-drive-entry';
+const isDemoMode = process.env.REACT_APP_DEMO_MODE === 'true';
+const demoReadOnlyMessage = 'Demo drive is read-only. Restarting the demo restores the same sample files.';
 
 const joinPath = (...parts) => parts
     .filter(Boolean)
@@ -182,6 +184,10 @@ function UserPage() {
     const uploadFiles = async (files, targetPath = currentPath) => {
         const selectedFiles = Array.from(files || []);
         if (!selectedFiles.length) return;
+        if (isDemoMode) {
+            notify(demoReadOnlyMessage, 'info');
+            return;
+        }
 
         setUploading(true);
         try {
@@ -201,6 +207,11 @@ function UserPage() {
     };
 
     const createFolder = async () => {
+        if (isDemoMode) {
+            notify(demoReadOnlyMessage, 'info');
+            return;
+        }
+
         const name = window.prompt('Folder name');
         if (!name || !name.trim()) return;
 
@@ -244,6 +255,12 @@ function UserPage() {
     );
 
     const deleteFolderRecursive = async (entry) => {
+        if (isDemoMode) {
+            notify(demoReadOnlyMessage, 'info');
+            setDeleteConfirmEntry(null);
+            return;
+        }
+
         try {
             await storageApi.deleteFolder(entry.key, true);
             notify('Folder and contents deleted.', 'success');
@@ -256,6 +273,11 @@ function UserPage() {
 
     const deleteEntry = async (entry) => {
         setContextMenu(null);
+        if (isDemoMode) {
+            notify(demoReadOnlyMessage, 'info');
+            return;
+        }
+
         try {
             if (entry.type === 'folder') {
                 if (folderHasChildren(entry.key)) {
@@ -342,6 +364,13 @@ function UserPage() {
         clearClipboardOnSuccess = false
     }) => {
         if (!entry) return false;
+        if (isDemoMode) {
+            notify(demoReadOnlyMessage, 'info');
+            setMoveModalEntry(null);
+            setConflictDialog(null);
+            return false;
+        }
+
         if (folderWouldMoveIntoItself(entry, targetPath)) {
             notify(`A folder cannot be ${mode === 'copy' ? 'copied' : 'moved'} into itself.`, 'error');
             return false;
@@ -608,19 +637,23 @@ function UserPage() {
                 actions={(
                     <>
                         <div className="plus-menu" onClick={(event) => event.stopPropagation()}>
-                            <ActionButton
-                                variant="primary"
-                                className="plus-button"
-                                onClick={() => setMenuOpen((value) => !value)}
-                                disabled={uploading}
-                            >
-                                +
-                            </ActionButton>
-                            {menuOpen && (
-                                <div className="menu-popover">
-                                    <button className="menu-item" onClick={() => fileInputRef.current?.click()}>Upload files</button>
-                                    <button className="menu-item" onClick={createFolder}>New folder</button>
-                                </div>
+                            {!isDemoMode && (
+                                <>
+                                    <ActionButton
+                                        variant="primary"
+                                        className="plus-button"
+                                        onClick={() => setMenuOpen((value) => !value)}
+                                        disabled={uploading}
+                                    >
+                                        +
+                                    </ActionButton>
+                                    {menuOpen && (
+                                        <div className="menu-popover">
+                                            <button className="menu-item" onClick={() => fileInputRef.current?.click()}>Upload files</button>
+                                            <button className="menu-item" onClick={createFolder}>New folder</button>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                         <ActionButton variant="ghost" onClick={fetchDashboard}>Refresh</ActionButton>
@@ -639,9 +672,9 @@ function UserPage() {
                 <StatCard label="Files" value={files.length} hint="Encrypted objects" />
                 <StatCard label="Folders" value={folders.length} hint="Virtual folders" />
                 <StatCard label="Storage used" value={formatBytes(totalBytes)} hint="Original file size" />
-                <StatCard label="Upload limit" value="250 MB" hint="Per request demo limit" />
+                <StatCard label={isDemoMode ? 'Demo mode' : 'Upload limit'} value={isDemoMode ? 'Read-only' : '250 MB'} hint={isDemoMode ? 'Seeded sample files' : 'Per request demo limit'} />
 
-                <DashboardSection title="Workspace" subtitle="Right-click anywhere to create folders or manage files." className="span-8">
+                <DashboardSection title="Workspace" subtitle={isDemoMode ? 'Browse and download seeded sample files. Changes are disabled in this public demo.' : 'Right-click anywhere to create folders or manage files.'} className="span-8">
                     <div className="drive-toolbar">
                         <div className="drive-breadcrumb">
                             <button
@@ -713,16 +746,18 @@ function UserPage() {
                         className={`drop-zone ${dragActive ? 'drop-zone-active' : ''}`}
                         onContextMenu={(event) => openContextMenu(event)}
                         onDragOver={(event) => {
-                            event.preventDefault();
-                            setDragActive(true);
-                            setDragHint(`Move to ${currentPath || 'My Drive'}`);
+                            if (!isDemoMode) {
+                                event.preventDefault();
+                                setDragActive(true);
+                                setDragHint(`Move to ${currentPath || 'My Drive'}`);
+                            }
                         }}
                         onDragLeave={() => {
                             setDragActive(false);
                             setDragHint('');
                         }}
                         onDrop={(event) => {
-                            handleDropToPath(event, currentPath);
+                            if (!isDemoMode) handleDropToPath(event, currentPath);
                         }}
                     >
                         {driveEntries.length === 0 ? (
@@ -733,12 +768,14 @@ function UserPage() {
                                     <div
                                         key={`${entry.type}-${entry.key}`}
                                         className="drive-item"
-                                        draggable
+                                        draggable={!isDemoMode}
                                         onDragStart={(event) => {
-                                            event.stopPropagation();
-                                            event.dataTransfer.effectAllowed = 'move';
-                                            event.dataTransfer.setData(DRIVE_ENTRY_MIME, JSON.stringify(entry));
-                                            event.dataTransfer.setData('application/json', JSON.stringify(entry));
+                                            if (!isDemoMode) {
+                                                event.stopPropagation();
+                                                event.dataTransfer.effectAllowed = 'move';
+                                                event.dataTransfer.setData(DRIVE_ENTRY_MIME, JSON.stringify(entry));
+                                                event.dataTransfer.setData('application/json', JSON.stringify(entry));
+                                            }
                                         }}
                                         onDragOver={(event) => {
                                             if (entry.type === 'folder') {
@@ -788,37 +825,38 @@ function UserPage() {
                     >
                         {!contextMenu.entry && (
                             <>
-                                <button className="menu-item" onClick={() => fileInputRef.current?.click()}>Upload here</button>
-                                <button className="menu-item" onClick={createFolder}>New folder</button>
-                                {clipboard && <button className="menu-item" onClick={() => pasteEntryToPath(currentPath)}>Paste here</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={() => fileInputRef.current?.click()}>Upload here</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={createFolder}>New folder</button>}
+                                {!isDemoMode && clipboard && <button className="menu-item" onClick={() => pasteEntryToPath(currentPath)}>Paste here</button>}
+                                {isDemoMode && <button className="menu-item" onClick={() => setContextMenu(null)}>Read-only demo</button>}
                             </>
                         )}
                         {contextMenu.entry?.type === 'folder' && (
                             <>
                                 <button className="menu-item" onClick={() => setCurrentPath(contextMenu.entry.key)}>Open folder</button>
-                                <button className="menu-item" onClick={() => copyEntry(contextMenu.entry)}>Copy</button>
-                                <button className="menu-item" onClick={() => cutEntry(contextMenu.entry)}>Cut</button>
-                                {clipboard && <button className="menu-item" onClick={() => pasteEntryToPath(contextMenu.entry.key)}>Paste inside</button>}
-                                {clipboard && <button className="menu-item" onClick={() => pasteEntryToPath(parentPath(contextMenu.entry.key))}>Paste here</button>}
-                                <button className="menu-item" onClick={() => renameEntry(contextMenu.entry)}>Rename</button>
-                                <button className="menu-item" onClick={() => {
+                                {!isDemoMode && <button className="menu-item" onClick={() => copyEntry(contextMenu.entry)}>Copy</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={() => cutEntry(contextMenu.entry)}>Cut</button>}
+                                {!isDemoMode && clipboard && <button className="menu-item" onClick={() => pasteEntryToPath(contextMenu.entry.key)}>Paste inside</button>}
+                                {!isDemoMode && clipboard && <button className="menu-item" onClick={() => pasteEntryToPath(parentPath(contextMenu.entry.key))}>Paste here</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={() => renameEntry(contextMenu.entry)}>Rename</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={() => {
                                     setMoveModalEntry(contextMenu.entry);
                                     setContextMenu(null);
-                                }}>Move to...</button>
-                                <button className="menu-item" onClick={() => deleteEntry(contextMenu.entry)}>Delete</button>
+                                }}>Move to...</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={() => deleteEntry(contextMenu.entry)}>Delete</button>}
                             </>
                         )}
                         {contextMenu.entry?.type === 'file' && (
                             <>
-                                <button className="menu-item" onClick={() => copyEntry(contextMenu.entry)}>Copy</button>
-                                <button className="menu-item" onClick={() => cutEntry(contextMenu.entry)}>Cut</button>
-                                {clipboard && <button className="menu-item" onClick={() => pasteEntryToPath(parentPath(contextMenu.entry.key))}>Paste here</button>}
-                                <button className="menu-item" onClick={() => renameEntry(contextMenu.entry)}>Rename / Move</button>
-                                <button className="menu-item" onClick={() => {
+                                {!isDemoMode && <button className="menu-item" onClick={() => copyEntry(contextMenu.entry)}>Copy</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={() => cutEntry(contextMenu.entry)}>Cut</button>}
+                                {!isDemoMode && clipboard && <button className="menu-item" onClick={() => pasteEntryToPath(parentPath(contextMenu.entry.key))}>Paste here</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={() => renameEntry(contextMenu.entry)}>Rename / Move</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={() => {
                                     setMoveModalEntry(contextMenu.entry);
                                     setContextMenu(null);
-                                }}>Move to...</button>
-                                <button className="menu-item" onClick={() => deleteEntry(contextMenu.entry)}>Delete</button>
+                                }}>Move to...</button>}
+                                {!isDemoMode && <button className="menu-item" onClick={() => deleteEntry(contextMenu.entry)}>Delete</button>}
                                 <button className="menu-item" onClick={() => downloadFile(contextMenu.entry)}>Download</button>
                             </>
                         )}

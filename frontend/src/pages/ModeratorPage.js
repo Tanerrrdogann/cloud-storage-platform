@@ -8,6 +8,8 @@ import StatusBadge from '../components/StatusBadge';
 import { moderatorApi } from '../services/api';
 
 const GRAFANA_URL = 'http://localhost:3000/d/cloud-storage-platform-overview/cloud-storage-platform-overview';
+const isDemoMode = process.env.REACT_APP_DEMO_MODE === 'true';
+const basePath = process.env.REACT_APP_PUBLIC_BASE_PATH || '';
 
 function ModeratorPage() {
     const [users, setUsers] = useState([]);
@@ -39,10 +41,15 @@ function ModeratorPage() {
 
     const handleLogout = () => {
         localStorage.clear();
-        window.location.href = '/';
+        window.location.href = `${basePath}/`;
     };
 
     const suspendUser = async (userId, days) => {
+        if (isDemoMode) {
+            alert('Demo moderation is read-only. Restarting the demo restores the same sample accounts.');
+            return;
+        }
+
         try {
             await moderatorApi.suspendUser(userId, days);
             await fetchDashboard();
@@ -59,7 +66,7 @@ function ModeratorPage() {
         { key: 'email', header: 'Email' },
         { key: 'enabled', header: 'Status', render: (row) => <StatusBadge value={row.enabled ? 'ACTIVE' : 'PENDING'} /> },
         { key: 'lastLoginIp', header: 'Last IP', render: (row) => row.lastLoginIp || <span className="muted">-</span> },
-        { key: 'actions', header: 'Moderation', render: (row) => (
+        { key: 'actions', header: 'Moderation', render: (row) => isDemoMode ? <span className="muted">Read-only demo</span> : (
             <div className="dashboard-actions" style={{ justifyContent: 'flex-start' }}>
                 <ActionButton variant="warning" onClick={() => suspendUser(row.id, 5)}>Suspend 5 days</ActionButton>
                 <ActionButton variant="success" onClick={() => suspendUser(row.id, 0)}>Unsuspend</ActionButton>
@@ -80,7 +87,7 @@ function ModeratorPage() {
             title="Moderation Console"
             description="A focused operator view for account safety, user moderation and recent platform activity."
             role="MODERATOR"
-            navItems={['User Moderation', 'Recent Activity', 'Observability']}
+            navItems={isDemoMode ? ['User Moderation', 'Recent Activity'] : ['User Moderation', 'Recent Activity', 'Observability']}
             activeNavItem={activeNavItem}
             onNavItemClick={(item) => {
                 setActiveNavItem(item);
@@ -93,7 +100,7 @@ function ModeratorPage() {
             }}
             actions={(
                 <>
-                    <a className="button button-primary" href={GRAFANA_URL} target="_blank" rel="noreferrer">Open Grafana</a>
+                    {!isDemoMode && <a className="button button-primary" href={GRAFANA_URL} target="_blank" rel="noreferrer">Open Grafana</a>}
                     <ActionButton variant="ghost" onClick={fetchDashboard}>Refresh</ActionButton>
                     <ActionButton variant="danger" onClick={handleLogout}>Sign out</ActionButton>
                 </>

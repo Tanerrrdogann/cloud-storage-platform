@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const basePath = process.env.REACT_APP_PUBLIC_BASE_PATH || '';
+
 const API = axios.create({
-    baseURL: process.env.REACT_APP_API_BASE_URL || '/api/v1',
+    baseURL: process.env.REACT_APP_API_BASE_URL || `${basePath}/api/v1`,
     headers: {
         'Content-Type': 'application/json'
     }
@@ -21,9 +23,9 @@ API.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            if (window.location.pathname !== "/") {
+            if (window.location.pathname !== `${basePath}/`) {
                 localStorage.clear();
-                window.location.href = "/";
+                window.location.href = `${basePath}/`;
             }
         }
         return Promise.reject(error);

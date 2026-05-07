@@ -42,7 +42,13 @@ openssl pkcs12 -export \
 
 cp "$GATEWAY_RES/gateway-keystore.p12" "$GATEWAY_RES/gateway-client.p12"
 cp "$GATEWAY_RES/gateway-keystore.p12" "$AUTH_RES/auth-server.p12"
-cp "$GATEWAY_RES/gateway-keystore.p12" "$AUTH_RES/auth-truststore.p12"
+rm -f "$AUTH_RES/auth-truststore.p12"
+keytool -importcert -noprompt \
+  -alias cloud-storage-dev-root-ca \
+  -file "$CERT_DIR/rootCA.pem" \
+  -keystore "$AUTH_RES/auth-truststore.p12" \
+  -storetype PKCS12 \
+  -storepass "$PASSWORD"
 cp "$CERT_DIR/rootCA.pem" "$GATEWAY_RES/rootCA.pem"
 cp "$CERT_DIR/rootCA.pem" "$AUTH_RES/rootCA.pem"
 cp "$CERT_DIR/server.pem" "$GATEWAY_RES/localhost+2.pem"

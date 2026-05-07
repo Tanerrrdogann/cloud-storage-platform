@@ -9,6 +9,30 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 
+const basePath = process.env.REACT_APP_PUBLIC_BASE_PATH || '';
+
+function useNtworksDemoHeartbeat() {
+  React.useEffect(() => {
+    const heartbeat = () => {
+      fetch('/api/demos/cloud-storage-platform/heartbeat', {
+        method: 'POST',
+        keepalive: true
+      }).catch(() => undefined);
+    };
+
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 20000);
+    window.addEventListener('focus', heartbeat);
+    window.addEventListener('pageshow', heartbeat);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', heartbeat);
+      window.removeEventListener('pageshow', heartbeat);
+    };
+  }, []);
+}
+
 const PrivateRoute = ({ children, role }) => {
     const userRole = localStorage.getItem("role");
     const token = localStorage.getItem("accessToken");
@@ -21,7 +45,7 @@ const PrivateRoute = ({ children, role }) => {
 
 const globalStyles = {
     appContainer: {
-        backgroundColor: '#0f172a', 
+        background: 'radial-gradient(circle at 18% 10%, rgba(216, 216, 216, 0.34), transparent 30%), #121212',
         minHeight: '100vh',
         width: '100%',
         margin: 0,
@@ -31,9 +55,11 @@ const globalStyles = {
 };
 
 function App() {
+  useNtworksDemoHeartbeat();
+
   return (
     <div style={globalStyles.appContainer}>
-      <Router>
+      <Router basename={basePath}>
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
